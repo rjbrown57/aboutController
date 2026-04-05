@@ -58,7 +58,8 @@ func (r *WorkloadReconciler) Reconcile() (ctrl.Result, error) {
 
 	r.logger().Info("Detected workload", "kind", r.kind(), "name", r.Workload.GetName())
 
-	if r.isDeleting() {
+	// If the workload is deleting, or no longer has any annotations we should clean up
+	if r.isDeleting() || !common.HasWatchedAnnotation(r.Workload.GetAnnotations()) {
 		return r.handleDelete()
 	}
 
