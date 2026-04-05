@@ -44,7 +44,7 @@ import (
 var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
-	Verison  = "v0.0.0"
+	Version  = "v0.0.0"
 )
 
 func init() {
@@ -102,7 +102,7 @@ func main() {
 	}
 
 	if versionBool {
-		setupLog.Info("aboutController", "version", Verison)
+		setupLog.Info("aboutController", "version", Version)
 		os.Exit(0)
 	}
 
