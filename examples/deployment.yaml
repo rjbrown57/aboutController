@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aboutcontroller-example-deployment
+  labels:
+    app.kubernetes.io/name: aboutcontroller-example-deployment
+  annotations:
+    aboutcontroller.io/deployment-app-name: "example-web"
+    aboutcontroller.io/deployment-app-version: "v1.2.3"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: aboutcontroller-example-deployment
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: aboutcontroller-example-deployment
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27
+          ports:
+            - containerPort: 80

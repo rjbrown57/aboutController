@@ -26,7 +26,6 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -38,7 +37,6 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	"github.com/rjbrown57/aboutController/internal/common"
 	"github.com/rjbrown57/aboutController/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
@@ -184,9 +182,6 @@ func main() {
 	if err := (&controller.DeploymentReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
-		AboutControllerCommon: common.AboutControllerCommon{
-			ManagedProperties: make(map[types.UID][]*aboutapi.ClusterProperty),
-		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "Deployment")
 		os.Exit(1)
@@ -194,9 +189,6 @@ func main() {
 	if err := (&controller.StatefulSetReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
-		AboutControllerCommon: common.AboutControllerCommon{
-			ManagedProperties: make(map[types.UID][]*aboutapi.ClusterProperty),
-		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "StatefulSet")
 		os.Exit(1)
@@ -204,9 +196,6 @@ func main() {
 	if err := (&controller.DaemonsetReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
-		AboutControllerCommon: common.AboutControllerCommon{
-			ManagedProperties: make(map[types.UID][]*aboutapi.ClusterProperty),
-		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "Daemonset")
 		os.Exit(1)

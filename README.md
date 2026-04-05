@@ -2,9 +2,9 @@
 
 aboutController is a simple controller to [about-api](https://github.com/kubernetes-sigs/about-api) clusterProperites based on annotations to k8s workload objects.
 
-To utilize this controller add a annotation to your workload with the prefix `aboutcontroller.io`. 
+To utilize this controller add any number of annotations to your workload with the prefix `aboutcontroller.io`.
 
-The name of the generated property will be what comes after the /, and the value will be whatever the annotation value is. 
+The name of the generated properties will be what comes after the /, and the value will be whatever the annotation value is. 
 
 Examples
 * `aboutcontroller.io/myapp: "v0.0.0"` will result in a clusterProperty being created with the content
@@ -16,8 +16,9 @@ metadata:
   name: myapp
 spec:
   value: v0.0.0
-
 ```
+
+On removal of the workload that generated the property all properties will be removed.
 
 ## License
 

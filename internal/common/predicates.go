@@ -2,28 +2,11 @@ package common
 
 import (
 	"maps"
-	"os"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
-
-var WatchedPrefix = "aboutcontroller.io/"
-
-// init will allow us to override watchedPrefix via envVar if set
-func init() {
-	if s, ok := os.LookupEnv("aboutPrefix"); ok {
-		// Normalize input so validation accepts either "example.io" or "example.io/".
-		s = strings.TrimSuffix(s, "/")
-		// Only accept prefixes that are valid Kubernetes-style annotation name prefixes.
-		if len(validation.IsDNS1123Subdomain(s)) == 0 {
-			// Keep the trailing slash so downstream prefix checks stay simple.
-			WatchedPrefix = s + "/"
-		}
-	}
-}
 
 // hasWatchedAnnotation will find out target annotation
 func hasWatchedAnnotation(annotations map[string]string) bool {

@@ -18,25 +18,19 @@ package controller
 
 import (
 	"context"
-	"sync"
 
 	"github.com/rjbrown57/aboutController/internal/common"
-	"github.com/rjbrown57/aboutController/pkg/propertybuilder"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // StatefulSetReconciler reconciles a StatefulSet object
 type StatefulSetReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-
-	common.AboutControllerCommon
-	Mu sync.Mutex
 }
 
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
@@ -53,31 +47,15 @@ type StatefulSetReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.23.3/pkg/reconcile
 func (r *StatefulSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = logf.FromContext(ctx)
+	wr := NewWorkloadReconciler(&WorkloadReconcilerOptions{
+		Ctx:      ctx,
+		C:        r.Client,
+		Req:      req,
+		Scheme:   r.Scheme,
+		Workload: &appsv1.StatefulSet{},
+	})
 
-	logger := logf.FromContext(ctx)
-
-	workload := &appsv1.DaemonSet{}
-	if err := r.Get(ctx, req.NamespacedName, workload); err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
-
-	// check if we have a property for this deployment
-	if _, exists := r.ManagedProperties[workload.GetUID()]; !exists {
-		logger.Info("Detected", "Deployment", workload.Name)
-
-		Properties := propertybuilder.PropertiesFromAnnotations(workload.ObjectMeta, common.WatchedPrefix)
-
-		for _, prop := range Properties.Items {
-			logger.Info("Adding clusterProperty", "name", prop.Name, "value", prop.Spec.Value)
-			if err := r.Create(ctx, &prop); err != nil {
-				logger.Error(err, "Failed to create Property for", "Deployment", workload.Name)
-			}
-		}
-
-	}
-
-	return ctrl.Result{}, nil
+	return wr.Reconcile()
 }
 
 // SetupWithManager sets up the controller with the Manager.
