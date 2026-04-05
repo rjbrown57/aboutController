@@ -44,11 +44,10 @@ func PropertiesFromAnnotations(obj metav1.ObjectMeta, prefix string) aboutapi.Cl
 
 	for annotationKey, annotationValue := range obj.GetAnnotations() {
 		if s, found := strings.CutPrefix(annotationKey, prefix); found {
-			// this won't work in cases where a deployment/ds exist in the same ns with the same name
 			n := NewClusterProperty(s, annotationValue)
 
 			n.Annotations = map[string]string{
-				"owner": string(obj.GetUID()),
+				"owneruid": string(obj.GetUID()),
 			}
 
 			list.Items = append(list.Items, *n)

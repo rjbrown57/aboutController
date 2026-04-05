@@ -45,7 +45,7 @@ func AnnotationPredicate() predicate.Predicate {
 			return e.Object != nil && hasWatchedAnnotation(e.Object.GetAnnotations())
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			//todo: refactor here because a certain diff indicates removal
+			//todo: refactor here because a certain diff indicates removal of opt-in annotation
 			return e.ObjectNew != nil && hasWatchedAnnotation(e.ObjectNew.GetAnnotations())
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {

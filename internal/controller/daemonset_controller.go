@@ -30,8 +30,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// DeploymentReconciler reconciles a Deployment object
-type DeploymentReconciler struct {
+// DaemonsetReconciler reconciles a Daemonset object
+type DaemonsetReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
@@ -39,35 +39,39 @@ type DeploymentReconciler struct {
 	Mu sync.Mutex
 }
 
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=apps,resources=deployments/finalizers,verbs=update
+// +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=daemonsets/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=apps,resources=daemonsets/finalizers,verbs=update
 
-// +kubebuilder:rbac:groups=about.k8s.io,resources=ClusterProperty,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=about.k8s.io,resources=ClusterProperty/status,verbs=update;patch;delete
-// +kubebuilder:rbac:groups=about.k8s.io,resources=ClusterProperty/finalizers,verbs=update
-
-// Reconcile will trigger on any deployment that has opted in and create a clusterProperty
+// Reconcile is part of the main kubernetes reconciliation loop which aims to
+// move the current state of the cluster closer to the desired state.
+// TODO(user): Modify the Reconcile function to compare the state specified by
+// the Daemonset object against the actual cluster state, and then
+// perform operations to make the cluster state reflect the state specified by
+// the user.
+//
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.23.3/pkg/reconcile
-func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *DaemonsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	_ = logf.FromContext(ctx)
+
 	logger := logf.FromContext(ctx)
 
-	deployment := &appsv1.Deployment{}
-	if err := r.Get(ctx, req.NamespacedName, deployment); err != nil {
+	workload := &appsv1.DaemonSet{}
+	if err := r.Get(ctx, req.NamespacedName, workload); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	// check if we have a property for this deployment
-	if _, exists := r.ManagedProperties[deployment.GetUID()]; !exists {
-		logger.Info("Detected", "Deployment", deployment.Name)
+	if _, exists := r.ManagedProperties[workload.GetUID()]; !exists {
+		logger.Info("Detected", "Deployment", workload.Name)
 
-		Properties := propertybuilder.PropertiesFromAnnotations(deployment.ObjectMeta, common.WatchedPrefix)
+		Properties := propertybuilder.PropertiesFromAnnotations(workload.ObjectMeta, common.WatchedPrefix)
 
 		for _, prop := range Properties.Items {
 			logger.Info("Adding clusterProperty", "name", prop.Name, "value", prop.Spec.Value)
 			if err := r.Create(ctx, &prop); err != nil {
-				logger.Error(err, "Failed to create Property for", "Deployment", deployment.Name)
+				logger.Error(err, "Failed to create Property for", "Deployment", workload.Name)
 			}
 		}
 
@@ -77,9 +81,9 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *DeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *DaemonsetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appsv1.Deployment{}, builder.WithPredicates(common.AnnotationPredicate())).
-		Named("deployment").
+		For(&appsv1.DaemonSet{}, builder.WithPredicates(common.AnnotationPredicate())).
+		Named("daemonset").
 		Complete(r)
 }
