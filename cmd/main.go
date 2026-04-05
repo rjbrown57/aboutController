@@ -43,6 +43,7 @@ import (
 var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
+	verison  = "v0.0.0"
 )
 
 func init() {

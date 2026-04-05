@@ -21,16 +21,14 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/rjbrown57/aboutController/pkg/propertybuilder"
 	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	aboutapi "sigs.k8s.io/about-api/pkg/apis/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 // DeploymentReconciler reconciles a Deployment object
@@ -65,61 +63,30 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	if _, exists := r.ManagedProperties[fmt.Sprintf("%s/%s", deployment.Namespace, deployment.Name)]; !exists {
 		logger.Info("Detected", "Deployment", deployment.Name)
 
+		// Replace with a builder that will add all of the properties from the annotations
 		// Create a clusterProperty
-		clusterProperty := aboutapi.ClusterProperty{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: deployment.Name,
-			},
-			Spec: aboutapi.ClusterPropertySpec{
-				Value: "detected",
-			},
-		}
+		/*
+			clusterProperty := aboutapi.ClusterProperty{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: deployment.Name,
+				},
+				Spec: aboutapi.ClusterPropertySpec{
+					Value: "detected",
+				},
+			}
+		*/
 
-		if err := r.Create(ctx, &clusterProperty); err != nil {
-			logger.Error(err, "Failed to create Property for", "Deployment", deployment.Name)
+		Properties := propertybuilder.PropertiesFromAnnotations(deployment.GetAnnotations(), watchedPrefix)
+
+		for _, prop := range Properties.Items {
+			if err := r.Create(ctx, &prop); err != nil {
+				logger.Error(err, "Failed to create Property for", "Deployment", deployment.Name)
+			}
 		}
 
 	}
 
 	return ctrl.Result{}, nil
-}
-
-const watchedAnnotation = "rjbrown57.io/track"
-
-func hasWatchedAnnotation(d *appsv1.Deployment) bool {
-	if d == nil {
-		return false
-	}
-	_, ok := d.Annotations[watchedAnnotation]
-	return ok
-}
-
-func deploymentAnnotationPredicate() predicate.Predicate {
-	return predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			d, ok := e.Object.(*appsv1.Deployment)
-			return ok && hasWatchedAnnotation(d)
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			oldD, ok1 := e.ObjectOld.(*appsv1.Deployment)
-			newD, ok2 := e.ObjectNew.(*appsv1.Deployment)
-			if !ok1 || !ok2 {
-				return false
-			}
-
-			oldVal, oldOk := oldD.Annotations[watchedAnnotation]
-			newVal, newOk := newD.Annotations[watchedAnnotation]
-
-			return oldOk != newOk || oldVal != newVal
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			d, ok := e.Object.(*appsv1.Deployment)
-			return ok && hasWatchedAnnotation(d)
-		},
-		GenericFunc: func(e event.GenericEvent) bool {
-			return false
-		},
-	}
 }
 
 // SetupWithManager sets up the controller with the Manager.
