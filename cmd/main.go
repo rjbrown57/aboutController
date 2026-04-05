@@ -44,7 +44,7 @@ import (
 var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
-	verison  = "v0.0.0"
+	Verison  = "v0.0.0"
 )
 
 func init() {
@@ -62,6 +62,7 @@ func main() {
 	var probeAddr string
 	var secureMetrics bool
 	var enableHTTP2 bool
+	var versionBool bool
 	var tlsOpts []func(*tls.Config)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
@@ -80,6 +81,7 @@ func main() {
 	flag.StringVar(&metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.BoolVar(&versionBool, "version", false, "display version and exit")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -97,6 +99,11 @@ func main() {
 	disableHTTP2 := func(c *tls.Config) {
 		setupLog.Info("Disabling HTTP/2")
 		c.NextProtos = []string{"http/1.1"}
+	}
+
+	if versionBool {
+		setupLog.Info("aboutController", "version", Verison)
+		os.Exit(0)
 	}
 
 	if !enableHTTP2 {
