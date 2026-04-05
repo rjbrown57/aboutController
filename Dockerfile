@@ -1,12 +1,28 @@
-FROM ubuntu
+FROM golang:1.25 AS builder
 
-RUN groupadd -r aboutController -g 99999 && \
-    useradd -r -u 99999 -g aboutController -s /bin/bash aboutController
+WORKDIR /workspace
 
-COPY aboutController /usr/local/bin/aboutController
-RUN chown aboutController:aboutController /usr/local/bin/aboutController && \
-    chmod 755 /usr/local/bin/aboutController
+# Cache dependencies first.
+COPY go.mod go.mod
+COPY go.sum go.sum
+RUN go mod download
 
-USER aboutController
+# Copy the Go source needed to build the manager.
+COPY cmd/ cmd/
+COPY internal/ internal/
+COPY pkg/ pkg/
 
-ENTRYPOINT ["/usr/local/bin/aboutController"]
+# Build a static manager binary for the target platform.
+ARG TARGETOS
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} \
+	go build -a -o manager ./cmd/main.go
+
+FROM gcr.io/distroless/static:nonroot
+
+WORKDIR /
+COPY --from=builder /workspace/manager .
+
+USER 65532:65532
+
+ENTRYPOINT ["/manager"]

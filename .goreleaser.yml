@@ -15,10 +15,6 @@ builds:
       - arm64
     ldflags:
       - "-X github.com/rjbrown57/aboutcontroller/cmd.Version={{.Version}}"
-dockers:
-  - image_templates:
-    - ghcr.io/rjbrown57/aboutcontroller
-    - ghcr.io/rjbrown57/aboutcontroller:{{ .Tag }}
 archives:
   - formats: ['binary']
 checksum:
