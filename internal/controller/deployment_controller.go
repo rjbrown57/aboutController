@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/rjbrown57/aboutController/internal/common"
 	"github.com/rjbrown57/aboutController/pkg/propertybuilder"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -63,22 +64,10 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	if _, exists := r.ManagedProperties[fmt.Sprintf("%s/%s", deployment.Namespace, deployment.Name)]; !exists {
 		logger.Info("Detected", "Deployment", deployment.Name)
 
-		// Replace with a builder that will add all of the properties from the annotations
-		// Create a clusterProperty
-		/*
-			clusterProperty := aboutapi.ClusterProperty{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: deployment.Name,
-				},
-				Spec: aboutapi.ClusterPropertySpec{
-					Value: "detected",
-				},
-			}
-		*/
-
-		Properties := propertybuilder.PropertiesFromAnnotations(deployment.GetAnnotations(), watchedPrefix)
+		Properties := propertybuilder.PropertiesFromAnnotations(deployment.ObjectMeta, common.WatchedPrefix)
 
 		for _, prop := range Properties.Items {
+			logger.Info("Adding clusterProperty", "name", prop.Name, "value", prop.Spec.Value)
 			if err := r.Create(ctx, &prop); err != nil {
 				logger.Error(err, "Failed to create Property for", "Deployment", deployment.Name)
 			}
@@ -92,7 +81,7 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 // SetupWithManager sets up the controller with the Manager.
 func (r *DeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appsv1.Deployment{}, builder.WithPredicates(deploymentAnnotationPredicate())).
+		For(&appsv1.Deployment{}, builder.WithPredicates(common.AnnotationPredicate())).
 		Named("deployment").
 		Complete(r)
 }

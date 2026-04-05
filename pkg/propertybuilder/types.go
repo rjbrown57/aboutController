@@ -37,14 +37,21 @@ func NewClusterProperty(name, value string) *aboutapi.ClusterProperty {
 	return prop
 }
 
-func PropertiesFromAnnotations(annotations map[string]string, prefix string) aboutapi.ClusterPropertyList {
+func PropertiesFromAnnotations(obj metav1.ObjectMeta, prefix string) aboutapi.ClusterPropertyList {
 	list := aboutapi.ClusterPropertyList{
 		Items: make([]aboutapi.ClusterProperty, 0),
 	}
 
-	for annotationKey, annotationValue := range annotations {
-		if strings.HasPrefix(annotationKey, prefix) {
-			list.Items = append(list.Items, *NewClusterProperty(strings.TrimPrefix(annotationKey, prefix), annotationValue))
+	for annotationKey, annotationValue := range obj.GetAnnotations() {
+		if s, found := strings.CutPrefix(annotationKey, prefix); found {
+			// this won't work in cases where a deployment/ds exist in the same ns with the same name
+			n := NewClusterProperty(s, annotationValue)
+
+			n.Annotations = map[string]string{
+				"owner": string(obj.GetUID()),
+			}
+
+			list.Items = append(list.Items, *n)
 		}
 	}
 
