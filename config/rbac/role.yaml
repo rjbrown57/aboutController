@@ -7,7 +7,7 @@ rules:
 - apiGroups:
   - about.k8s.io
   resources:
-  - ClusterProperty
+  - clusterproperties
   verbs:
   - create
   - delete
@@ -19,13 +19,13 @@ rules:
 - apiGroups:
   - about.k8s.io
   resources:
-  - ClusterProperty/finalizers
+  - clusterproperties/finalizers
   verbs:
   - update
 - apiGroups:
   - about.k8s.io
   resources:
-  - ClusterProperty/status
+  - clusterproperties/status
   verbs:
   - delete
   - patch

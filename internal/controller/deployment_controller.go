@@ -37,9 +37,9 @@ type DeploymentReconciler struct {
 // +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=deployments/finalizers,verbs=update
 
-// +kubebuilder:rbac:groups=about.k8s.io,resources=ClusterProperty,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=about.k8s.io,resources=ClusterProperty/status,verbs=update;patch;delete
-// +kubebuilder:rbac:groups=about.k8s.io,resources=ClusterProperty/finalizers,verbs=update
+// +kubebuilder:rbac:groups=about.k8s.io,resources=clusterproperties,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=about.k8s.io,resources=clusterproperties/status,verbs=update;patch;delete
+// +kubebuilder:rbac:groups=about.k8s.io,resources=clusterproperties/finalizers,verbs=update
 
 // Reconcile will trigger on any deployment that has opted in and create a clusterProperty
 // For more details, check Reconcile and its Result here:
