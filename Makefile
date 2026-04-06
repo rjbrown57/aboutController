@@ -253,3 +253,104 @@ endef
 define gomodver
 $(shell go list -m -f '{{if .Replace}}{{.Replace.Version}}{{else}}{{.Version}}{{end}}' $(1) 2>/dev/null)
 endef
+
+##@ Helm Deployment
+
+## Helm binary to use for deploying the chart
+HELM ?= helm
+## Namespace to deploy the Helm release
+HELM_NAMESPACE ?= aboutcontroller-system
+## Name of the Helm release
+HELM_RELEASE ?= aboutcontroller
+## Path to the Helm chart directory
+HELM_CHART_DIR ?= charts/chart
+## Additional arguments to pass to helm commands
+HELM_EXTRA_ARGS ?=
+
+.PHONY: install-helm
+install-helm: ## Install the latest version of Helm.
+	@command -v $(HELM) >/dev/null 2>&1 || { \
+		echo "Installing Helm..." && \
+		curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4 | bash; \
+	}
+
+.PHONY: helm-deploy
+helm-deploy: install-helm ## Deploy manager to the K8s cluster via Helm. Specify an image with IMG.
+	$(HELM) upgrade --install $(HELM_RELEASE) $(HELM_CHART_DIR) \
+		--namespace $(HELM_NAMESPACE) \
+		--create-namespace \
+		--set manager.image.repository=$${IMG%:*} \
+		--set manager.image.tag=$${IMG##*:} \
+		--wait \
+		--timeout 5m \
+		$(HELM_EXTRA_ARGS)
+
+.PHONY: helm-uninstall
+helm-uninstall: ## Uninstall the Helm release from the K8s cluster.
+	$(HELM) uninstall $(HELM_RELEASE) --namespace $(HELM_NAMESPACE)
+
+.PHONY: helm-status
+helm-status: ## Show Helm release status.
+	$(HELM) status $(HELM_RELEASE) --namespace $(HELM_NAMESPACE)
+
+.PHONY: helm-history
+helm-history: ## Show Helm release history.
+	$(HELM) history $(HELM_RELEASE) --namespace $(HELM_NAMESPACE)
+
+.PHONY: helm-rollback
+helm-rollback: ## Rollback to previous Helm release.
+	$(HELM) rollback $(HELM_RELEASE) --namespace $(HELM_NAMESPACE)
+
+##@ Skaffold
+
+## Skaffold binary to use for local build/deploy workflows
+SKAFFOLD ?= skaffold
+## Path to the Skaffold config file
+SKAFFOLD_FILE ?= skaffold.yaml
+## Additional arguments to pass to Skaffold commands
+SKAFFOLD_ARGS ?=
+
+.PHONY: skaffold-build
+skaffold-build: ## Build artifacts with Skaffold.
+	$(SKAFFOLD) build -f $(SKAFFOLD_FILE) $(SKAFFOLD_ARGS)
+
+.PHONY: skaffold-render
+skaffold-render: ## Render manifests with Skaffold.
+	$(SKAFFOLD) render -f $(SKAFFOLD_FILE) $(SKAFFOLD_ARGS)
+
+.PHONY: skaffold-run
+skaffold-run: ## Build, deploy, and wait with Skaffold.
+	$(SKAFFOLD) run -f $(SKAFFOLD_FILE) $(SKAFFOLD_ARGS)
+
+.PHONY: skaffold-dev
+skaffold-dev: ## Run the Skaffold development loop.
+	$(SKAFFOLD) dev -f $(SKAFFOLD_FILE) $(SKAFFOLD_ARGS)
+
+.PHONY: skaffold-debug
+skaffold-debug: ## Run the Skaffold development loop with debug transforms.
+	$(SKAFFOLD) debug -f $(SKAFFOLD_FILE) $(SKAFFOLD_ARGS)
+
+.PHONY: skaffold-delete
+skaffold-delete: ## Delete resources deployed by Skaffold.
+	$(SKAFFOLD) delete -f $(SKAFFOLD_FILE) $(SKAFFOLD_ARGS)
+# Makefile for basic Kind cluster management
+
+##@ KIND Local Testing
+
+CLUSTER_NAME ?= basic-kind
+
+.PHONY: create-cluster
+create-cluster: ## Create KIND testing cluster
+	@echo "Creating Kind cluster: $(CLUSTER_NAME)..."
+	kind create cluster --name $(CLUSTER_NAME) --config kind.config
+	@echo "Cluster created successfully."
+	@echo "Use sudo cloud-provider-kind to enable LB services/ingress etc. See https://kind.sigs.k8s.io/docs/user/ingress/"
+	@echo "Installing preprequsite CRD"
+	kubectl config set-context $(CLUSTER_NAME)
+	kubectl apply -f hack/about.k8s.io_clusterproperties.yaml
+
+.PHONY: delete-cluster
+delete-cluster: ## Delete KIND testing cluster
+	@echo "Deleting Kind cluster: $(CLUSTER_NAME)..."
+	kind delete cluster --name $(CLUSTER_NAME)
+	@echo "Cluster deleted."
