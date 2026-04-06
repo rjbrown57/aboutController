@@ -31,6 +31,8 @@ import (
 type DeploymentReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+
+	common.ControllerCommon
 }
 
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
@@ -40,6 +42,7 @@ type DeploymentReconciler struct {
 // +kubebuilder:rbac:groups=about.k8s.io,resources=clusterproperties,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=about.k8s.io,resources=clusterproperties/status,verbs=update;patch;delete
 // +kubebuilder:rbac:groups=about.k8s.io,resources=clusterproperties/finalizers,verbs=update
+// +kubebuilder:rbac:groups=events.k8s.io,resources=events,verbs=create;patch
 
 // Reconcile will trigger on any deployment that has opted in and create a clusterProperty
 // For more details, check Reconcile and its Result here:
@@ -51,6 +54,7 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		Req:      req,
 		Scheme:   r.Scheme,
 		Workload: &appsv1.Deployment{},
+		ER:       r.Recorder,
 	})
 
 	return wr.Reconcile()

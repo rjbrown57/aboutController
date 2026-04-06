@@ -7,8 +7,10 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/rjbrown57/aboutController/internal/common"
 	"github.com/rjbrown57/aboutController/pkg/propertybuilder"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/events"
 	aboutapi "sigs.k8s.io/about-api/pkg/apis/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,6 +25,7 @@ type WorkloadReconcilerOptions struct {
 	Req      ctrl.Request
 	Scheme   *runtime.Scheme
 	Workload client.Object
+	ER       events.EventRecorder
 }
 
 type WorkloadReconciler struct {
@@ -56,8 +59,6 @@ func (r *WorkloadReconciler) Reconcile() (ctrl.Result, error) {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	r.logger().Info("Detected workload", "kind", r.kind(), "name", r.Workload.GetName())
-
 	// If the workload is deleting, or no longer has any annotations we should clean up
 	if r.isDeleting() || !common.HasWatchedAnnotation(r.Workload.GetAnnotations()) {
 		return r.handleDelete()
@@ -83,6 +84,14 @@ func (r *WorkloadReconciler) isDeleting() bool {
 // logger returns the request-scoped logger from the reconciliation context.
 func (r *WorkloadReconciler) logger() logr.Logger {
 	return logf.FromContext(r.Ctx)
+}
+
+func (r *WorkloadReconciler) emitEvent(regarding client.Object, related runtime.Object, eventType, reason, action, note string, args ...any) {
+	if r.ER == nil {
+		return
+	}
+
+	r.ER.Eventf(regarding, related, eventType, reason, action, note, args...)
 }
 
 // kind resolves the Kubernetes kind for the current workload for logging.
@@ -140,13 +149,17 @@ func (r *WorkloadReconciler) reconcileProperties() (ctrl.Result, error) {
 			if err := r.C.Patch(r.Ctx, existingProp, client.MergeFrom(before)); err != nil {
 				r.logger().Error(err, "Failed to update Property for", "kind", r.kind(), "workload", r.Workload.GetName())
 			}
+			r.emitEvent(r.Workload, &prop, corev1.EventTypeNormal, "UpdateProperty", "Update", "Updated ClusterProperty %s: %v", prop.Name, prop.Spec.Value)
 			continue
 		}
 
 		r.logger().Info("Adding clusterProperty", "kind", r.kind(), "workload", r.Workload.GetName(), "name", prop.Name, "value", prop.Spec.Value)
 		if err := r.C.Create(r.Ctx, &prop); err != nil {
 			r.logger().Error(err, "Failed to create Property for", "kind", r.kind(), "workload", r.Workload.GetName())
+			r.emitEvent(r.Workload, &prop, corev1.EventTypeWarning, "PublishPropertyFailed", "Create", "Could not create ClusterProperty %s: %v", prop.Name, err)
+			continue
 		}
+		r.emitEvent(r.Workload, &prop, corev1.EventTypeNormal, "PublishedClusterProperty", "Create", "Published ClusterProperty %s", prop.Name)
 	}
 
 	return r.deleteStaleProperties(propList, selectedProperties)
@@ -165,7 +178,11 @@ func (r *WorkloadReconciler) deleteStaleProperties(
 		r.logger().Info("Removing clusterProperty", "kind", r.kind(), "workload", r.Workload.GetName(), "name", prop.Name)
 		if err := r.C.Delete(r.Ctx, &prop); client.IgnoreNotFound(err) != nil {
 			r.logger().Error(err, "Failed to delete Property for", "kind", r.kind(), "workload", r.Workload.GetName(), "name", prop.Name)
+			r.emitEvent(r.Workload, &prop, corev1.EventTypeWarning, "DeletePropertyFailed", "Delete", "Could not delete ClusterProperty %s: %v", prop.Name, err)
+			continue
 		}
+
+		r.emitEvent(r.Workload, &prop, corev1.EventTypeNormal, "DeletedClusterProperty", "Delete", "Deleted ClusterProperty %s", prop.Name)
 	}
 
 	return ctrl.Result{}, nil
@@ -188,8 +205,11 @@ func (r *WorkloadReconciler) handleDelete() (ctrl.Result, error) {
 	for _, prop := range propList.Items {
 		r.logger().Info("Removing clusterProperty for deleted workload", "kind", r.kind(), "workload", r.Workload.GetName(), "name", prop.Name)
 		if err := r.C.Delete(r.Ctx, &prop); client.IgnoreNotFound(err) != nil {
+			r.emitEvent(r.Workload, &prop, corev1.EventTypeWarning, "DeletePropertyFailed", "Delete", "Could not delete ClusterProperty %s during workload cleanup: %v", prop.Name, err)
 			return ctrl.Result{}, err
 		}
+
+		r.emitEvent(r.Workload, &prop, corev1.EventTypeNormal, "DeletedClusterProperty", "Delete", "Deleted ClusterProperty %s during workload cleanup", prop.Name)
 	}
 
 	// Patch away the finalizer after cleanup so we only send the finalizer change back to the API
