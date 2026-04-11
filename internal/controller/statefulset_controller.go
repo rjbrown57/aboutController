@@ -35,6 +35,22 @@ type StatefulSetReconciler struct {
 	common.ControllerCommon
 }
 
+func NewStatefulSetReconcilier(mgr ctrl.Manager) (*StatefulSetReconciler, error) {
+	sr := &StatefulSetReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+		ControllerCommon: common.ControllerCommon{
+			Recorder: mgr.GetEventRecorder("statefulset-controller"),
+		},
+	}
+
+	if err := sr.SetupWithManager(mgr); err != nil {
+		return nil, err
+	}
+
+	return sr, nil
+}
+
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=statefulsets/finalizers,verbs=update

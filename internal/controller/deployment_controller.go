@@ -35,6 +35,22 @@ type DeploymentReconciler struct {
 	common.ControllerCommon
 }
 
+func NewDeploymentReconcilier(mgr ctrl.Manager) (*DeploymentReconciler, error) {
+	dr := &DeploymentReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+		ControllerCommon: common.ControllerCommon{
+			Recorder: mgr.GetEventRecorder("deployment-controller"),
+		},
+	}
+
+	if err := dr.SetupWithManager(mgr); err != nil {
+		return nil, err
+	}
+
+	return dr, nil
+}
+
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=deployments/finalizers,verbs=update

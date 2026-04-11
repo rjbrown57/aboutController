@@ -35,6 +35,23 @@ type DaemonsetReconciler struct {
 	common.ControllerCommon
 }
 
+func NewDaemonsetReconcilier(mgr ctrl.Manager) (*DaemonsetReconciler, error) {
+
+	dr := &DaemonsetReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+		ControllerCommon: common.ControllerCommon{
+			Recorder: mgr.GetEventRecorder("daemonset-controller"),
+		},
+	}
+
+	if err := dr.SetupWithManager(mgr); err != nil {
+		return nil, err
+	}
+
+	return dr, nil
+}
+
 // +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=daemonsets/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=daemonsets/finalizers,verbs=update
