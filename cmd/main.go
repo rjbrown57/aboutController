@@ -37,7 +37,6 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	"github.com/rjbrown57/aboutController/internal/common"
 	"github.com/rjbrown57/aboutController/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
@@ -64,6 +63,9 @@ func main() {
 	var secureMetrics bool
 	var enableHTTP2 bool
 	var versionBool bool
+	var enableDepReconciler bool
+	var enableDsReconciler bool
+	var enableStsReconciler bool
 	var tlsOpts []func(*tls.Config)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
@@ -82,6 +84,12 @@ func main() {
 	flag.StringVar(&metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.BoolVar(&enableDepReconciler, "enable-dep", true,
+		"If set, the Deployment reconciler will be registered")
+	flag.BoolVar(&enableDsReconciler, "enable-ds", true,
+		"If set, the DaemonSet reconciler will be registered")
+	flag.BoolVar(&enableStsReconciler, "enable-sts", true,
+		"If set, the StatefulSet reconciler will be registered")
 	flag.BoolVar(&versionBool, "version", false, "display version and exit")
 	opts := zap.Options{
 		Development: true,
@@ -187,36 +195,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := (&controller.DeploymentReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		ControllerCommon: common.ControllerCommon{
-			Recorder: mgr.GetEventRecorder("deployment-controller"),
-		},
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "Failed to create controller", "controller", "Deployment")
+	builder := controller.NewAboutBuilder()
+	if enableDepReconciler {
+		builder.WithDeployReconciler()
+	}
+	if enableStsReconciler {
+		builder.WithStsReconciler()
+	}
+	if enableDsReconciler {
+		builder.WithDsReconciler()
+	}
+
+	if err := builder.Complete(mgr); err != nil {
+		setupLog.Error(err, "Failed to create controllers")
 		os.Exit(1)
 	}
-	if err := (&controller.StatefulSetReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		ControllerCommon: common.ControllerCommon{
-			Recorder: mgr.GetEventRecorder("statefulset-controller"),
-		},
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "Failed to create controller", "controller", "StatefulSet")
-		os.Exit(1)
-	}
-	if err := (&controller.DaemonsetReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		ControllerCommon: common.ControllerCommon{
-			Recorder: mgr.GetEventRecorder("daemonset-controller"),
-		},
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "Failed to create controller", "controller", "Daemonset")
-		os.Exit(1)
-	}
+
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
