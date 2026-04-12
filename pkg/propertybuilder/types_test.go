@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/rjbrown57/aboutController/internal/common"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -73,9 +74,9 @@ func TestGetPropLabels(t *testing.T) {
 	got := GetPropLabels(obj)
 
 	want := map[string]string{
-		fmt.Sprintf("%s/namespace", testLabelPrefix): "default",
-		fmt.Sprintf("%s/name", testLabelPrefix):      "example-deployment",
-		fmt.Sprintf("%s/kind", testLabelPrefix):      "Deployment",
+		common.WorkloadNamespaceLabel: "default",
+		common.WorkloadNameLabel:      "example-deployment",
+		common.WorkloadKindLabel:      "Deployment",
 	}
 
 	if len(got) != len(want) {
@@ -116,7 +117,7 @@ func TestPropertiesFromAnnotations(t *testing.T) {
 
 	gotByName := make(map[string]string, len(got.Items))
 	for _, item := range got.Items {
-		namespaceLabel := item.Labels[fmt.Sprintf("%s/namespace", testLabelPrefix)]
+		namespaceLabel := item.Labels[common.WorkloadNamespaceLabel]
 		if namespaceLabel != "default" {
 			t.Fatalf(
 				"property %q namespace label = %q, want %q",
@@ -125,7 +126,7 @@ func TestPropertiesFromAnnotations(t *testing.T) {
 				"default",
 			)
 		}
-		nameLabel := item.Labels[fmt.Sprintf("%s/name", testLabelPrefix)]
+		nameLabel := item.Labels[common.WorkloadNameLabel]
 		if nameLabel != "example-statefulset" {
 			t.Fatalf(
 				"property %q name label = %q, want %q",
@@ -134,7 +135,7 @@ func TestPropertiesFromAnnotations(t *testing.T) {
 				"example-statefulset",
 			)
 		}
-		kindLabel := item.Labels[fmt.Sprintf("%s/kind", testLabelPrefix)]
+		kindLabel := item.Labels[common.WorkloadKindLabel]
 		if kindLabel != "StatefulSet" {
 			t.Fatalf("property %q kind label = %q, want %q", item.Name, kindLabel, "StatefulSet")
 		}

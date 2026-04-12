@@ -1,16 +1,12 @@
 package propertybuilder
 
 import (
-	"fmt"
 	"strings"
 
+	"github.com/rjbrown57/aboutController/internal/common"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	aboutapi "sigs.k8s.io/about-api/pkg/apis/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-)
-
-const (
-	labelPrefix string = "aboutcontroller.io"
 )
 
 // hasWatchedAnnotation will find out target annotation
@@ -60,8 +56,8 @@ func PropertiesFromAnnotations(obj client.Object, prefix string, ownerlabel stri
 
 func GetPropLabels(obj client.Object) map[string]string {
 	return map[string]string{
-		fmt.Sprintf("%s/namespace", labelPrefix): obj.GetNamespace(),
-		fmt.Sprintf("%s/name", labelPrefix):      obj.GetName(),
-		fmt.Sprintf("%s/kind", labelPrefix):      obj.GetObjectKind().GroupVersionKind().Kind,
+		common.WorkloadNamespaceLabel: obj.GetNamespace(),
+		common.WorkloadNameLabel:      obj.GetName(),
+		common.WorkloadKindLabel:      obj.GetObjectKind().GroupVersionKind().Kind,
 	}
 }
