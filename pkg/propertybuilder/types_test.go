@@ -1,11 +1,15 @@
 package propertybuilder
 
 import (
+	"fmt"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+var testLabelPrefix = "aboutcontroller.io"
+var testAnnotationPrefix = fmt.Sprintf("%s/", testLabelPrefix)
 
 func TestHasWatchedAnnotation(t *testing.T) {
 	t.Parallel()
@@ -19,7 +23,7 @@ func TestHasWatchedAnnotation(t *testing.T) {
 		{
 			name:        "nil annotations",
 			annotations: nil,
-			prefix:      "aboutcontroller.io/",
+			prefix:      testAnnotationPrefix,
 			want:        false,
 		},
 		{
@@ -27,22 +31,21 @@ func TestHasWatchedAnnotation(t *testing.T) {
 			annotations: map[string]string{
 				"example.com/version": "v1.0.0",
 			},
-			prefix: "aboutcontroller.io/",
+			prefix: testAnnotationPrefix,
 			want:   false,
 		},
 		{
 			name: "matching annotation present",
 			annotations: map[string]string{
-				"example.com/version":         "v1.0.0",
-				"aboutcontroller.io/my-prop": "v2.0.0",
+				"example.com/version":                          "v1.0.0",
+				fmt.Sprintf("%smy-prop", testAnnotationPrefix): "v2.0.0",
 			},
-			prefix: "aboutcontroller.io/",
+			prefix: testAnnotationPrefix,
 			want:   true,
 		},
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -70,9 +73,9 @@ func TestGetPropLabels(t *testing.T) {
 	got := GetPropLabels(obj)
 
 	want := map[string]string{
-		"aboutcontroller.io/namespace": "default",
-		"aboutcontroller.io/name":      "example-deployment",
-		"aboutcontroller.io/kind":      "Deployment",
+		fmt.Sprintf("%s/namespace", testLabelPrefix): "default",
+		fmt.Sprintf("%s/name", testLabelPrefix):      "example-deployment",
+		fmt.Sprintf("%s/kind", testLabelPrefix):      "Deployment",
 	}
 
 	if len(got) != len(want) {
@@ -98,14 +101,14 @@ func TestPropertiesFromAnnotations(t *testing.T) {
 			Namespace: "default",
 			Name:      "example-statefulset",
 			Annotations: map[string]string{
-				"aboutcontroller.io/statefulset-name":    "example-db",
-				"aboutcontroller.io/statefulset-version": "v4.5.6",
-				"example.com/ignored":                    "ignore-me",
+				fmt.Sprintf("%sstatefulset-name", testAnnotationPrefix):    "example-db",
+				fmt.Sprintf("%sstatefulset-version", testAnnotationPrefix): "v4.5.6",
+				"example.com/ignored": "ignore-me",
 			},
 		},
 	}
 
-	got := PropertiesFromAnnotations(obj, "aboutcontroller.io/", "unused-owner-label")
+	got := PropertiesFromAnnotations(obj, testAnnotationPrefix, "unused-owner-label")
 
 	if len(got.Items) != 2 {
 		t.Fatalf("PropertiesFromAnnotations() returned %d properties, want 2", len(got.Items))
@@ -113,14 +116,27 @@ func TestPropertiesFromAnnotations(t *testing.T) {
 
 	gotByName := make(map[string]string, len(got.Items))
 	for _, item := range got.Items {
-		if item.Labels["aboutcontroller.io/namespace"] != "default" {
-			t.Fatalf("property %q namespace label = %q, want %q", item.Name, item.Labels["aboutcontroller.io/namespace"], "default")
+		namespaceLabel := item.Labels[fmt.Sprintf("%s/namespace", testLabelPrefix)]
+		if namespaceLabel != "default" {
+			t.Fatalf(
+				"property %q namespace label = %q, want %q",
+				item.Name,
+				namespaceLabel,
+				"default",
+			)
 		}
-		if item.Labels["aboutcontroller.io/name"] != "example-statefulset" {
-			t.Fatalf("property %q name label = %q, want %q", item.Name, item.Labels["aboutcontroller.io/name"], "example-statefulset")
+		nameLabel := item.Labels[fmt.Sprintf("%s/name", testLabelPrefix)]
+		if nameLabel != "example-statefulset" {
+			t.Fatalf(
+				"property %q name label = %q, want %q",
+				item.Name,
+				nameLabel,
+				"example-statefulset",
+			)
 		}
-		if item.Labels["aboutcontroller.io/kind"] != "StatefulSet" {
-			t.Fatalf("property %q kind label = %q, want %q", item.Name, item.Labels["aboutcontroller.io/kind"], "StatefulSet")
+		kindLabel := item.Labels[fmt.Sprintf("%s/kind", testLabelPrefix)]
+		if kindLabel != "StatefulSet" {
+			t.Fatalf("property %q kind label = %q, want %q", item.Name, kindLabel, "StatefulSet")
 		}
 
 		gotByName[item.Name] = item.Spec.Value
