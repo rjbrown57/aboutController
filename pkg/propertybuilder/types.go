@@ -1,10 +1,16 @@
 package propertybuilder
 
 import (
+	"fmt"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	aboutapi "sigs.k8s.io/about-api/pkg/apis/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const (
+	labelPrefix string = "aboutcontroller.io"
 )
 
 // hasWatchedAnnotation will find out target annotation
@@ -34,7 +40,7 @@ func NewClusterProperty(name, value string) *aboutapi.ClusterProperty {
 	return prop
 }
 
-func PropertiesFromAnnotations(obj metav1.ObjectMeta, prefix string, ownerlabel string) aboutapi.ClusterPropertyList {
+func PropertiesFromAnnotations(obj client.Object, prefix string, ownerlabel string) aboutapi.ClusterPropertyList {
 	list := aboutapi.ClusterPropertyList{
 		Items: make([]aboutapi.ClusterProperty, 0),
 	}
@@ -43,13 +49,19 @@ func PropertiesFromAnnotations(obj metav1.ObjectMeta, prefix string, ownerlabel 
 		if s, found := strings.CutPrefix(annotationKey, prefix); found {
 			n := NewClusterProperty(s, annotationValue)
 
-			n.Labels = map[string]string{
-				ownerlabel: string(obj.GetUID()),
-			}
+			n.Labels = GetPropLabels(obj)
 
 			list.Items = append(list.Items, *n)
 		}
 	}
 
 	return list
+}
+
+func GetPropLabels(obj client.Object) map[string]string {
+	return map[string]string{
+		fmt.Sprintf("%s/namespace", labelPrefix): obj.GetNamespace(),
+		fmt.Sprintf("%s/name", labelPrefix):      obj.GetName(),
+		fmt.Sprintf("%s/kind", labelPrefix):      obj.GetObjectKind().GroupVersionKind().Kind,
+	}
 }

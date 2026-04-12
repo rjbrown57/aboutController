@@ -8,7 +8,6 @@ import (
 	"github.com/rjbrown57/aboutController/internal/common"
 	"github.com/rjbrown57/aboutController/pkg/propertybuilder"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/events"
 	aboutapi "sigs.k8s.io/about-api/pkg/apis/v1alpha1"
@@ -102,20 +101,17 @@ func (r *WorkloadReconciler) kind() string {
 // listManagedProperties returns the ClusterProperty objects currently associated with this workload.
 func (r *WorkloadReconciler) listManagedProperties() (*aboutapi.ClusterPropertyList, error) {
 	propList := &aboutapi.ClusterPropertyList{}
-	if err := r.C.List(r.Ctx, propList, client.MatchingLabels{
-		common.OwnerLabel: string(r.Workload.GetUID()),
-	}); client.IgnoreNotFound(err) != nil {
+
+	if err := r.C.List(r.Ctx, propList, client.MatchingLabels(propertybuilder.GetPropLabels(r.Workload))); client.IgnoreNotFound(err) != nil {
 		return nil, err
 	}
+
 	return propList, nil
 }
 
 // desiredProperties builds the desired ClusterProperty set from the workload annotations.
 func (r *WorkloadReconciler) desiredProperties() aboutapi.ClusterPropertyList {
-	return propertybuilder.PropertiesFromAnnotations(metav1.ObjectMeta{
-		Annotations: r.Workload.GetAnnotations(),
-		UID:         r.Workload.GetUID(),
-	}, common.WatchedPrefix, common.OwnerLabel)
+	return propertybuilder.PropertiesFromAnnotations(r.Workload, common.WatchedPrefix, common.OwnerLabel)
 }
 
 // reconcileProperties applies creates, updates, and deletions so managed properties match the workload annotations.
@@ -195,9 +191,7 @@ func (r *WorkloadReconciler) handleDelete() (ctrl.Result, error) {
 	}
 
 	propList := &aboutapi.ClusterPropertyList{}
-	if err := r.C.List(r.Ctx, propList, client.MatchingLabels{
-		common.OwnerLabel: string(r.Workload.GetUID()),
-	}); client.IgnoreNotFound(err) != nil {
+	if err := r.C.List(r.Ctx, propList, client.MatchingLabels(propertybuilder.GetPropLabels(r.Workload))); client.IgnoreNotFound(err) != nil {
 		return ctrl.Result{}, err
 	}
 
