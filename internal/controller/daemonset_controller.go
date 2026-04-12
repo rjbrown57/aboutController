@@ -22,9 +22,11 @@ import (
 	"github.com/rjbrown57/aboutController/internal/common"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	aboutapi "sigs.k8s.io/about-api/pkg/apis/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 )
 
 // DaemonsetReconciler reconciles a Daemonset object
@@ -55,6 +57,9 @@ func NewDaemonsetReconcilier(mgr ctrl.Manager) (*DaemonsetReconciler, error) {
 // +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=daemonsets/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=daemonsets/finalizers,verbs=update
+// +kubebuilder:rbac:groups=about.k8s.io,resources=clusterproperties,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=about.k8s.io,resources=clusterproperties/status,verbs=update;patch;delete
+// +kubebuilder:rbac:groups=about.k8s.io,resources=clusterproperties/finalizers,verbs=update
 // +kubebuilder:rbac:groups=events.k8s.io,resources=events,verbs=create;patch
 
 func (r *DaemonsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -75,6 +80,10 @@ func (r *DaemonsetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 func (r *DaemonsetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appsv1.DaemonSet{}, builder.WithPredicates(common.AnnotationPredicate())).
+		Watches(
+			&aboutapi.ClusterProperty{},
+			handler.EnqueueRequestsFromMapFunc(common.ClusterPropertyToWorkload("DaemonSet")),
+		).
 		Named("daemonset").
 		Complete(r)
 }
