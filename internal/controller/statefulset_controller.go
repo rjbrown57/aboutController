@@ -22,9 +22,11 @@ import (
 	"github.com/rjbrown57/aboutController/internal/common"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	aboutapi "sigs.k8s.io/about-api/pkg/apis/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 )
 
 // StatefulSetReconciler reconciles a StatefulSet object
@@ -54,6 +56,9 @@ func NewStatefulSetReconcilier(mgr ctrl.Manager) (*StatefulSetReconciler, error)
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=statefulsets/finalizers,verbs=update
+// +kubebuilder:rbac:groups=about.k8s.io,resources=clusterproperties,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=about.k8s.io,resources=clusterproperties/status,verbs=update;patch;delete
+// +kubebuilder:rbac:groups=about.k8s.io,resources=clusterproperties/finalizers,verbs=update
 // +kubebuilder:rbac:groups=events.k8s.io,resources=events,verbs=create;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -82,6 +87,10 @@ func (r *StatefulSetReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 func (r *StatefulSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appsv1.StatefulSet{}, builder.WithPredicates(common.AnnotationPredicate())).
+		Watches(
+			&aboutapi.ClusterProperty{},
+			handler.EnqueueRequestsFromMapFunc(common.ClusterPropertyToWorkload("StatefulSet")),
+		).
 		Named("statefulset").
 		Complete(r)
 }

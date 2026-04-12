@@ -22,6 +22,7 @@ func HasWatchedAnnotation(annotations map[string]string) bool {
 	return false
 }
 
+// AnnotationPredicate is used to filter out any object that has not opted in
 func AnnotationPredicate() predicate.Predicate {
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {

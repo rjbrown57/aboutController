@@ -12,6 +12,9 @@ import (
 var WatchedPrefix = "aboutcontroller.io/"
 var OwnerLabel string
 var Finalizer string
+var WorkloadNamespaceLabel string
+var WorkloadNameLabel string
+var WorkloadKindLabel string
 
 // init will allow us to override watchedPrefix via envVar if set.
 func init() {
@@ -27,4 +30,7 @@ func init() {
 
 	OwnerLabel = fmt.Sprintf("%s%s", WatchedPrefix, "owner")
 	Finalizer = fmt.Sprintf("%s%s", WatchedPrefix, "finalizer")
+	WorkloadNamespaceLabel = fmt.Sprintf("%s%s", WatchedPrefix, "namespace")
+	WorkloadNameLabel = fmt.Sprintf("%s%s", WatchedPrefix, "name")
+	WorkloadKindLabel = fmt.Sprintf("%s%s", WatchedPrefix, "kind")
 }
